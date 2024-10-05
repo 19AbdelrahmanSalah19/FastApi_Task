@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, UniqueConstraint, CheckConstraint, Boolean
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, UniqueConstraint, CheckConstraint, Boolean, ForeignKeyConstraint
 from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
 from sqlalchemy.orm import relationship
 from database import Base
@@ -40,6 +40,8 @@ class UserRoles(Base):
 
     # Relationships
     user_role_mapping = relationship("UserRoleMapping", back_populates="role")
+    module = relationship("Modules", back_populates="user_roles")  # Add this line to link to Modules
+
 
 # UserRoleMapping model (representing user_role_mapping table)
 class UserRoleMapping(Base):
@@ -65,9 +67,25 @@ class Lead(Base):
     job_title = Column(String(100), nullable=True)
     assigned_to = Column(Integer, ForeignKey("user_info.id"), nullable=True)
 
-    lead_stage = Column(Integer, ForeignKey("leads_stage.id"), nullable=False)
-    lead_status = Column(Integer, ForeignKey("leads_status.id"), nullable=False)
-    lead_type = Column(Integer, ForeignKey("leads_types.id"), nullable=False)
+    lead_stage = Column(Integer, nullable=False)
+    lead_status = Column(Integer, nullable=False)
+    lead_type = Column(Integer, nullable=False)
+
+    # Define composite foreign keys
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ['company_domain', 'lead_stage'],
+            ['leads_stage.company_domain', 'leads_stage.id']
+        ),
+        ForeignKeyConstraint(
+            ['company_domain', 'lead_type'],
+            ['leads_types.company_domain', 'leads_types.id']
+        ),
+        ForeignKeyConstraint(
+            ['company_domain', 'lead_status'],
+            ['leads_status.company_domain', 'leads_status.id']
+        ),
+    )
 
     # Relationships
     assigned_to_user = relationship("UserInfo", back_populates="leads")
@@ -178,3 +196,67 @@ class LeadType(Base):
     date_added = Column(DateTime, default=datetime.datetime.now)
 
     leads = relationship("Lead", back_populates="type")
+
+
+class UserRolePermissions(Base):
+    __tablename__ = "user_role_permissions"
+
+    role_id = Column(Integer, ForeignKey("user_roles.id"), primary_key=True)
+    permission_id = Column(Integer, primary_key=True, autoincrement=True)
+    module_id = Column(Integer, nullable=False)
+    feature_id = Column(Integer, nullable=False)
+
+    # Permission flags
+    d_read = Column(Boolean, default=False)
+    d_write = Column(Boolean, default=False)
+    d_edit = Column(Boolean, default=False)
+    d_delete = Column(Boolean, default=False)
+
+    # Relationships
+    role = relationship("UserRoles", backref="permissions")  # Link to UserRoles
+    module_feature = relationship("ModuleFeatures", backref="permissions")  # Link to ModuleFeatures
+
+    __table_args__ = (
+    ForeignKeyConstraint(
+        ['role_id'],
+        ['user_roles.id'],
+        ondelete='CASCADE',
+    ),
+    ForeignKeyConstraint(
+        ['module_id', 'feature_id'],
+        ['module_features.module_id', 'module_features.feature_id'],
+    ),
+)    
+    
+class Modules(Base):
+    __tablename__ = "modules"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(50), nullable=False)
+    display_name = Column(String(100))
+    description = Column(String)  # TEXT type in SQL
+    available = Column(Boolean)
+    comming_on = Column(DateTime)  # DATE type in SQL
+    color = Column(Integer)  # BIGINT type in SQL
+    url = Column(String)  # TEXT type in SQL
+
+    # Relationships
+    user_roles = relationship("UserRoles", back_populates="module")  # Define back_populates for user roles if needed
+    features = relationship("ModuleFeatures", back_populates="module_reference")  # Change this line
+
+# ModuleFeatures model (representing module_features table)
+class ModuleFeatures(Base):
+    __tablename__ = "module_features"
+
+    module_id = Column(Integer, ForeignKey("modules.id"), primary_key=True)
+    feature_id = Column(Integer, primary_key=True)
+    name = Column(String(50), nullable=False)
+    display_name = Column(String(100), nullable=False)
+
+    # Relationships
+    module_reference = relationship("Modules", back_populates="features")  # Change to avoid conflict
+
+    __table_args__ = (
+        UniqueConstraint('module_id', 'feature_id', 'name', name='UQ_module_features'),
+    )
+

@@ -27,6 +27,9 @@ import RealEstate from './RealEstate';
 import AddLeads from './AddLeads';
 import AddCall from './AddCall';
 import AddMeeting from './AddMeeting';
+import DeleteLead from './DeleteLead';
+import EditLead from './EditLead';
+import EditSpecificLead from './EditSpecificLead';
 
 const router = createBrowserRouter([
   {
@@ -53,6 +56,19 @@ const router = createBrowserRouter([
     path: '/RealEstate/AddMeeting',
     element: <AddMeeting />,
   },
+  {
+    path: '/RealEstate/DeleteLead',
+    element: <DeleteLead />,
+  },
+  {
+    path: '/RealEstate/EditLead',
+    element: <EditLead />,
+  },
+  {
+    path: '/RealEstate/EditLead/EditSpecificLead',
+    element: <EditSpecificLead />,
+  },
+
 ]);
 
 const root = ReactDOM.createRoot(document.getElementById('root'));

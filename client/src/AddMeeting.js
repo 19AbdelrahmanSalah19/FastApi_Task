@@ -11,10 +11,12 @@ const AddMeeting = () => {
     const location = useLocation();
     const userId = location.state?.userId;
     const leadId = location.state?.leadId;
+    const moduleId = location.state?.moduleId;
+    const [leads, setLeads] = useState([]); // State for leads
     const [meeting, setMeeting] = useState({
         company_domain: '',
         meeting_date: '',
-        lead_id: leadId,
+        lead_id: '',
         assigned_to: '',
         meeting_status: '',
     });
@@ -22,7 +24,7 @@ const AddMeeting = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const usersResponse = await axios.get('http://localhost:8000/users/');
+                const usersResponse = await axios.get(`http://localhost:8000/users/${moduleId}/`);
                 setUsers(usersResponse.data);
 
                 const statusesResponse = await axios.get('http://localhost:8000/meeting_status/');
@@ -59,6 +61,25 @@ const AddMeeting = () => {
             ...prevMeeting,
             meeting_status: ''
         }));
+    };
+
+    const handleUserChange = async (event) => {
+        const selectedUserId = event.target.value;
+        setMeeting((prevCall) => ({
+            ...prevCall,
+            assigned_to: selectedUserId, // Set the selected user ID
+        }));
+
+        try {
+            const leadsResponse = await axios.get(`http://localhost:8000/leads/${selectedUserId}`);
+            setLeads(leadsResponse.data); // Update leads based on the selected user
+            setMeeting((prevCall) => ({
+                ...prevCall,
+                lead_id: '', // Reset lead ID when user changes
+            }));
+        } catch (error) {
+            console.error("There was an error fetching the leads!", error);
+        }
     };
 
     const handleSubmit = (event) => {
@@ -122,13 +143,32 @@ const AddMeeting = () => {
                         id="assigned_to"
                         className="form-control"
                         value={meeting.assigned_to}
-                        onChange={handleInputChange}
+                        onChange={handleUserChange}
                         required
                     >
                         <option value="">Assign to</option>
                         {users.map(user => (
                             <option key={user.id} value={user.id}>
                                 {user.first_name} {user.last_name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="form-group">
+                    <label htmlFor="lead_id">Lead Name</label>
+                    <select
+                        name="lead_id"
+                        id="lead_id"
+                        className="form-control"
+                        value={meeting.lead_id}
+                        onChange={handleInputChange}
+                        required
+                    >
+                        <option value="">Select Lead</option>
+                        {leads.map(lead => (
+                            <option key={lead.lead_id} value={lead.lead_id}>
+                                {lead.name}
                             </option>
                         ))}
                     </select>

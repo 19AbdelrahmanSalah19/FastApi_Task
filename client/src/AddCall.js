@@ -3,30 +3,29 @@ import axios from 'axios';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { useLocation } from 'react-router-dom';
 
-
 const AddCall = () => {
     const [users, setUsers] = useState([]);
     const [callStatuses, setCallStatuses] = useState([]);
     const [filteredCallStatuses, setFilteredCallStatuses] = useState([]);
     const [companyDomain, setCompanyDomain] = useState([]);
+    const [leadNames, setLeadNames] = useState([]);
+    const [leads, setLeads] = useState([]); // State for leads
     const location = useLocation();
     const userId = location.state?.userId;
-    const leadId = location.state?.leadId;
+    const moduleId = location.state?.moduleId;
     const [call, setCall] = useState({
         company_domain: '',
         call_date: '',
-        lead_id: leadId,
+        lead_id: '',  // This will hold the selected lead's ID
         assigned_to: '',
         call_status: '',
     });
-
-   
 
     useEffect(() => {
         // Fetch available users and call statuses
         const fetchData = async () => {
             try {
-                const usersResponse = await axios.get('http://localhost:8000/users/');
+                const usersResponse = await axios.get(`http://localhost:8000/users/${moduleId}/`);
                 setUsers(usersResponse.data);
 
                 const statusesResponse = await axios.get('http://localhost:8000/calls_status/');
@@ -65,9 +64,27 @@ const AddCall = () => {
         }));
     };
 
+    const handleUserChange = async (event) => {
+        const selectedUserId = event.target.value;
+        setCall((prevCall) => ({
+            ...prevCall,
+            assigned_to: selectedUserId, // Set the selected user ID
+        }));
+
+        try {
+            const leadsResponse = await axios.get(`http://localhost:8000/leads/${selectedUserId}`);
+            setLeads(leadsResponse.data); // Update leads based on the selected user
+            setCall((prevCall) => ({
+                ...prevCall,
+                lead_id: '', // Reset lead ID when user changes
+            }));
+        } catch (error) {
+            console.error("There was an error fetching the leads!", error);
+        }
+    };
+
     const handleSubmit = (event) => {
         event.preventDefault();
-        //console.log("Submitting call:", call);
         const isoDate = new Date(call.call_date).toISOString();
 
         const payload = {
@@ -126,13 +143,33 @@ const AddCall = () => {
                         id="assigned_to"
                         className="form-control"
                         value={call.assigned_to}
-                        onChange={handleInputChange}
+                        onChange={handleUserChange} // Change to handleUserChange
                         required
                     >
                         <option value="">Assign to</option>
                         {users.map(user => (
                             <option key={user.id} value={user.id}>
                                 {user.first_name} {user.last_name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* New dropdown for selecting a lead */}
+                <div className="form-group">
+                    <label htmlFor="lead_id">Lead Name</label>
+                    <select
+                        name="lead_id"
+                        id="lead_id"
+                        className="form-control"
+                        value={call.lead_id}
+                        onChange={handleInputChange}
+                        required
+                    >
+                        <option value="">Select Lead</option>
+                        {leads.map(lead => (
+                            <option key={lead.lead_id} value={lead.lead_id}>
+                                {lead.name}
                             </option>
                         ))}
                     </select>

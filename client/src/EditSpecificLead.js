@@ -1,18 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
-
-const AddLeads = () => {
-    const [users, setUsers] = useState([]);
-    const [leadStages, setLeadStages] = useState([]);
-    const [leadStatuses, setLeadStatuses] = useState([]);
-    const [leadTypes, setLeadTypes] = useState([]);
-    const [companyDomain, setCompanyDomain] = useState([]);
+const EditSpecificLead = () => {
     const location = useLocation();
-    const userId = location.state?.userId;
-    const moduleId = location.state?.moduleId;
+    const navigate = useNavigate();
+    const { userId, moduleId, leadId } = location.state;
+
     const [lead, setLead] = useState({
         company_domain: '',
         lead_phone: '',
@@ -26,10 +21,21 @@ const AddLeads = () => {
         gender: '',
     });
 
+    const [users, setUsers] = useState([]);
+    const [leadStages, setLeadStages] = useState([]);
+    const [leadStatuses, setLeadStatuses] = useState([]);
+    const [leadTypes, setLeadTypes] = useState([]);
+    const [companyDomain, setCompanyDomain] = useState([]);
+
     useEffect(() => {
-        // Fetch available users, lead stages, statuses, types, and company domains
+        // Fetch lead details and other required data
         const fetchData = async () => {
             try {
+                // Fetch lead details
+                const leadResponse = await axios.get(`http://localhost:8000/lead/${leadId}/`);
+                setLead(leadResponse.data);
+
+                // Fetch available users, lead stages, statuses, types, and company domains
                 const usersResponse = await axios.get(`http://localhost:8000/users/${moduleId}/`);
                 setUsers(usersResponse.data);
 
@@ -50,7 +56,7 @@ const AddLeads = () => {
         };
 
         fetchData();
-    }, []);
+    }, [leadId, moduleId]);
 
     const handleInputChange = (event) => {
         const { name, value } = event.target;
@@ -73,22 +79,20 @@ const AddLeads = () => {
         setLeadTypes(filteredTypes);
     };
 
-    const handleSubmit = (event) => {
+    const handleSubmit = async (event) => {
         event.preventDefault();
-        console.log("Submitting lead:", lead);
-        axios.post('http://localhost:8000/leads/', lead)
-            .then(response => {
-                alert("Lead added successfully!");
-            })
-            .catch(error => {
-                alert(`Error: ${JSON.stringify(error.response.data)}`);
-                console.error("There was an error adding the lead!", error.response.data);
-            });
+        try {
+            await axios.put(`http://localhost:8000/editlead/${leadId}/`, lead);
+            alert("Lead updated successfully!");
+            } catch (error) {
+            alert(`Error: ${JSON.stringify(error.response.data)}`);
+            console.error("There was an error updating the lead!", error.response.data);
+        }
     };
 
     return (
         <div className="container mt-5">
-            <h2 className="mb-4">Add New Lead</h2>
+            <h2 className="mb-4">Edit Lead</h2>
             <form onSubmit={handleSubmit}>
                 <div className="form-group">
                     <label htmlFor="company_domain">Company Domain</label>
@@ -251,10 +255,10 @@ const AddLeads = () => {
                     </select>
                 </div>
 
-                <button type="submit" className="btn btn-primary mt-3">Add Lead</button>
+                <button type="submit" className="btn btn-primary mt-3">Update Lead</button>
             </form>
         </div>
     );
 };
 
-export default AddLeads;
+export default EditSpecificLead;

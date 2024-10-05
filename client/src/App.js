@@ -1,10 +1,7 @@
-import React from 'react';
-import { useState } from "react";
-//import HR from './HR';
-//import RealEstate from './RealEstate';
+import React, { useState, useEffect } from "react";
 import 'bootstrap/dist/css/bootstrap.min.css';
-//import AddLeads from './AddLeads';
-import {useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 function App() {
   const [username, setUsername] = useState("");
@@ -12,23 +9,30 @@ function App() {
   const [message, setMessage] = useState("");
   const [options, setOptions] = useState(null);
   const [userId, setUserId] = useState(null);
+  const [modules, setModules] = useState([]);
   const navigate = useNavigate();
 
-  
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axios.get('http://localhost:8000/modules/');
+        setModules(response.data);  // Store the fetched modules
+      } catch (error) {
+        console.error("There was an error fetching the data!", error);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    const credentials = {
-      username: username,
-      password: password,
-    };
+    const credentials = { username, password };
 
     try {
       const response = await fetch("http://localhost:8000/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
       });
 
@@ -43,15 +47,25 @@ function App() {
         const uniqueModuleIds = [...new Set(moduleIds)];
 
         if (uniqueModuleIds.length === 1) {
-          // Redirect to single module
-          navigate(uniqueModuleIds[0] === 1 ? "/RealEstate" : "/HR", { state: { userId: data.user_id } });
+          // Redirect to single module with userId and moduleId
+          const moduleName = modules.find(module => module.id === uniqueModuleIds[0])?.name;
+          //console.log("Navigating to:", moduleName);
+          navigate(moduleName === "REAL_ESTATE" ? "/RealEstate" : "/HR", {
+            state: { userId: data.user_id, moduleId: uniqueModuleIds[0] }
+          });
         } else if (uniqueModuleIds.length > 1) {
           // If there are multiple unique module IDs
-          const options = uniqueModuleIds.map(id => ({
-            id,
-            name: id === 1 ? "RealEstate" : "HR"
-          }));
-          setOptions(options);
+          const options = uniqueModuleIds.map(id => {
+            const module = modules.find(mod => mod.id === id);
+            return {
+              id,
+              name: module ? module.name : `Module ${id}` // Fallback if module not found
+            };
+          });
+
+          // Ensure options only contain modules that were found
+          const validOptions = options.filter(option => option.name !== `Module ${option.id}`);
+          setOptions(validOptions.length > 0 ? validOptions : null); // Set options only if valid
         }
       } else {
         setMessage("Login failed. Check your credentials.");
@@ -62,9 +76,18 @@ function App() {
     }
   };
 
-  const handleSelectModule = (selection) => {
-    // Redirect based on the selected module
-    navigate(selection === 1 ? "/RealEstate" : "/HR", { state: { userId } });
+  const handleSelectModule = (selectedModuleId) => {
+    const selectedModule = modules.find(module => module.id === selectedModuleId);
+    const moduleName = selectedModule?.name;
+
+    // Redirect based on the selected module with userId and moduleId
+    //console.log("Navigating to:", moduleName);
+    navigate(moduleName === "REAL_ESTATE" ? "/RealEstate" : "/HR", {
+      state: {
+        userId,
+        moduleId: selectedModuleId
+      }
+    });
   };
 
   return (
@@ -109,24 +132,6 @@ function App() {
       </div>
     </div>
   );
-
-  
 }
 
 export default App;
-
-
-
-// export default function RouterApp() {
-//   return (
-//     <Router>
-//       <Routes>
-//         <Route path="/" element={<App />} />
-//         <Route path="/HR" element={<HR />} />
-//         <Route path="/RealEstate" element={<RealEstate />}>
-//           <Route path="add-lead" element={<AddLeads />} /> 
-//         </Route>
-//       </Routes>
-//     </Router>
-//   );
-// }

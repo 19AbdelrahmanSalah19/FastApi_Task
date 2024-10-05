@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from fastapi.responses import RedirectResponse  # Add this import
-from models import CallStatus, ClientCall, ClientMeeting, CompanyInfo, LeadStage, LeadStatus, LeadType, MeetingStatus, UserInfo, UserRoleMapping, UserRoles, Lead
+from models import CallStatus, ClientCall, ClientMeeting, CompanyInfo, LeadStage, LeadStatus, LeadType, MeetingStatus, ModuleFeatures, Modules, UserInfo, UserRoleMapping, UserRolePermissions, UserRoles, Lead
 from database import get_db
 from pydantic import BaseModel
 
@@ -93,6 +93,15 @@ async def get_lead_stage_name(id: int, db: Session = Depends(get_db)):
     
     return {"name": status.lead_status}
 
+@router.get("/user_name/{id}/")
+async def get_user_name(id: int, db: Session = Depends(get_db)):
+    user = db.query(UserInfo).filter(UserInfo.id == id).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"name": user.first_name}
+
 @router.get("/lead_type_name/{id}/")
 async def get_lead_type_name(id: int, db: Session = Depends(get_db)):
     status = db.query(LeadType).filter(LeadType.id == id).first()
@@ -120,6 +129,16 @@ async def get_meetings(lead_id: int, db: Session = Depends(get_db)):
 
     return meetings
 
+@router.get("/lead/{lead_id}")
+async def get_lead(lead_id: int, db: Session = Depends(get_db)):
+    lead = db.query(Lead).filter(Lead.lead_id == lead_id).first()
+    
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    return lead
+
+
 @router.get("/call_assigned_to_name/{lead_id}")
 async def get_call_assigned_to_name(lead_id: int, db: Session = Depends(get_db)):
     calls = db.query(ClientCall).filter(ClientCall.lead_id == lead_id).all()
@@ -128,6 +147,37 @@ async def get_call_assigned_to_name(lead_id: int, db: Session = Depends(get_db))
         raise HTTPException(status_code=404, detail="No calls found for this lead ID")
     
     user_ids = [call.assigned_to for call in calls]
+
+@router.get("/modules/")
+async def get_modules(db: Session = Depends(get_db)):
+    modules = db.query(Modules).all()
+    
+    if not modules:
+        raise HTTPException(status_code=404, detail="No modules found")
+    
+    return modules       
+
+@router.get("/users/{moduleId}")
+async def get_users(moduleId: int, db: Session = Depends(get_db)):
+    # Fetch roles for the given moduleId
+    roles = db.query(UserRoles).filter(UserRoles.module_id == moduleId).all()
+
+    if not roles:
+        raise HTTPException(status_code=404, detail="No roles found for this module")
+    
+    # Get unique user IDs from the roles
+    user_ids = []
+    for role in roles:
+        # Fetch user ID based on role_id
+        user_role_mappings = db.query(UserRoleMapping).filter(UserRoleMapping.role_id == role.id).all()
+        user_ids.extend(mapping.user_id for mapping in user_role_mappings)  # Extend the list with user_ids
+
+    print("USER IDS: ", user_ids)
+
+    # Fetch users based on user_ids
+    users = [db.query(UserInfo).filter(UserInfo.id == user_id).first() for user_id in user_ids]
+
+    return users
 
     
 
@@ -141,31 +191,81 @@ async def get_meetings(lead_id: int, db: Session = Depends(get_db)):
 
     return calls
 
+@router.get("/user_roles/{user_id}")
+async def get_user_roles(user_id: int, db: Session = Depends(get_db)):
+    roles = db.query(UserRoleMapping).filter(UserRoleMapping.user_id == user_id).all()
+    
+    if not roles:
+        raise HTTPException(status_code=404, detail="No roles found for this user ID")
+    
+    return roles
+
+@router.get("/module_features/")
+async def get_module_features(db: Session = Depends(get_db)):
+    features = db.query(ModuleFeatures).all()
+    
+    if not features:
+        raise HTTPException(status_code=404, detail="No features found")
+    
+    return features
+
+@router.get("/user_permissions/{user_id}/{moduleId}/{featureId}")
+async def get_user_permissions(user_id: int, moduleId: int, featureId: int,db: Session = Depends(get_db)):
+    # Retrieve role mappings for the given user_id
+    role_mappings = db.query(UserRoleMapping).filter(UserRoleMapping.user_id == user_id).all()
+
+    if not role_mappings:
+        raise HTTPException(status_code=404, detail="No roles found for this user ID")
+    
+    # Collect permissions for each role ID
+    permissions = []
+    for mapping in role_mappings:
+        role_id = mapping.role_id  # Extract role_id
+        role_permissions = db.query(UserRolePermissions).filter(
+            UserRolePermissions.role_id == role_id,
+            UserRolePermissions.module_id == moduleId,
+            UserRolePermissions.feature_id == featureId
+        ).all()
+        
+        permissions.extend(role_permissions)  # Add permissions to the list
+    
+    if not permissions:
+        raise HTTPException(status_code=404, detail="No permissions found for this user in the specified module")
+    
+    return permissions
+
 @router.get("/leads/")
 async def get_leads(db: Session = Depends(get_db)):
     leads = db.query(Lead).all()
     if not leads:
         raise HTTPException(status_code=404, detail="No leads found")
     return leads
-    
-# @router.get("/leads/filter/")
-# async def get_filtered_leads(assigned_to: Optional[int] = None, db: Session = Depends(get_db)):
-#     query = db.query(Lead)
-    
-#     if assigned_to is not None:
-#         query = query.filter(Lead.assigned_to == assigned_to)
-        
-#     leads = query.all()
-    
-#     if not leads:
-#         raise HTTPException(status_code=404, detail="No leads found")
-    
-#     return leads    
+
+@router.get("/leads/{user_id}")
+async def get_leads(user_id: int, db: Session = Depends(get_db)):
+    leads = db.query(Lead).filter(Lead.assigned_to == user_id).all()
+    if not leads:
+        raise HTTPException(status_code=404, detail="No leads found")
+    return leads
 
 @router.get("/company_domain/")
 async def get_company_domain(db: Session = Depends(get_db)):
     company_domain = db.query(CompanyInfo).all()
     return company_domain
+
+@router.delete("/leads/{lead_id}")
+async def delete_lead(lead_id: int, db: Session = Depends(get_db)):
+    # Find the lead by ID
+    lead = db.query(Lead).filter(Lead.lead_id == lead_id).first()  # Replace `Lead.id` with your actual field name if different
+
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    # Delete the lead
+    db.delete(lead)
+    db.commit()
+
+    return {"detail": "Lead deleted successfully"}
 
 class LeadCreate(BaseModel):
     company_domain: str
@@ -208,6 +308,31 @@ def create_lead(
     db.commit()
     db.refresh(new_lead)  # This will retrieve the lead_id and other fields
     return new_lead
+
+@router.put("/editlead/{lead_id}/")
+def update_lead(
+    lead_id: int,
+    lead: LeadCreate,
+    db: Session = Depends(get_db)
+):
+    existing_lead = db.query(Lead).filter(Lead.lead_id == lead_id).first()
+    if not existing_lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    existing_lead.company_domain = lead.company_domain
+    existing_lead.lead_phone = lead.lead_phone
+    existing_lead.name = lead.name
+    existing_lead.email = lead.email
+    existing_lead.job_title = lead.job_title
+    existing_lead.assigned_to = lead.assigned_to
+    existing_lead.lead_type = lead.lead_type
+    existing_lead.lead_status = lead.lead_status
+    existing_lead.lead_stage = lead.lead_stage
+    existing_lead.gender = lead.gender
+
+    db.commit()
+    db.refresh(existing_lead)
+    return existing_lead
 
 class CallCreate(BaseModel):
     company_domain: str
@@ -254,7 +379,7 @@ class MeetingCreate(BaseModel):
     meeting_date: datetime
     lead_id: int
     assigned_to: int
-    meeting_status: int
+    meeting_status: int   
 
 @router.post("/meetings/")
 def create_meeting(
