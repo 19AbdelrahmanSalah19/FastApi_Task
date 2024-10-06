@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 
 const RealEstate = () => {
     const [leads, setLeads] = useState([]);
-    const [expandedLeadId, setExpandedLeadId] = useState(null); // Only one lead's ID can be expanded
+    const [expandedLeadId, setExpandedLeadId] = useState(null);
     const location = useLocation();
     const userId = location.state?.userId;
     const moduleId = location.state?.moduleId;
@@ -14,12 +14,10 @@ const RealEstate = () => {
     const [leadStageName, setLeadStageName] = useState({});
     const [leadStatusName, setLeadStatusName] = useState({});
     const [leadTypeName, setLeadTypeName] = useState({});
-    const [assignedToName, setAssignedToName] = useState({});
-    const [meetings, setMeetings] = useState({}); // Store meetings by lead ID
-    const [calls, setCalls] = useState({}); // Store calls by lead ID
-    const [users, setUsers] = useState([]);
+    const [meetings, setMeetings] = useState({});
+    const [calls, setCalls] = useState({});
     const [callStatuses, setCallStatuses] = useState([]);
-    const [meetingStatuses, setMeetingStatuses] = useState([]); // Store meeting statuses
+    const [meetingStatuses, setMeetingStatuses] = useState([]);
     const [deletePermissions, setDeletePermissions] = useState([]);
     const [editPermissions, setEditPermissions] = useState([]);
     const [userName, setUserName] = useState([]);
@@ -46,14 +44,6 @@ const RealEstate = () => {
 
         };
 
-        const fetchUsers = async () => {
-            try {
-                const response = await axios.get('http://localhost:8000/users/');
-                setUsers(response.data);
-            } catch (error) {
-                console.error("Error fetching users:", error);
-            }
-        };
 
         const fetchCallStatuses = async () => {
             try {
@@ -102,24 +92,23 @@ const RealEstate = () => {
                 console.error("Error checking delete permissions:", error);
             }
             finally {
-                setLoading(false); // Set loading state to false after fetching
+                setLoading(false);
             }
         };
 
-        fetchUsers();
         fetchCallStatuses();
         fetchMeetingStatuses();
         fetchPermissions();
         fetchLeads();
         fetchUserName();
-    }, [userId, moduleId]); // Depend on userId and moduleId
+    }, [userId, moduleId]);
 
     const fetchLeadStageName = async (leadStageId) => {
         try {
             const response = await axios.get(`http://localhost:8000/lead_stage_name/${leadStageId}/`);
             setLeadStageName((prev) => ({
                 ...prev,
-                [leadStageId]: response.data.name, // Store stage name in state
+                [leadStageId]: response.data.name,
             }));
         } catch (error) {
             console.error("Error fetching lead stage name:", error);
@@ -133,7 +122,7 @@ const RealEstate = () => {
             const response = await axios.get(`http://localhost:8000/lead_status_name/${leadStatusId}/`);
             setLeadStatusName((prev) => ({
                 ...prev,
-                [leadStatusId]: response.data.name, // Store status name in state
+                [leadStatusId]: response.data.name,
             }));
         } catch (error) {
             console.error("Error fetching lead status name:", error);
@@ -145,7 +134,7 @@ const RealEstate = () => {
             const response = await axios.get(`http://localhost:8000/lead_type_name/${leadTypeId}/`);
             setLeadTypeName((prev) => ({
                 ...prev,
-                [leadTypeId]: response.data.name, // Store type name in state
+                [leadTypeId]: response.data.name,
             }));
             console.log("Lead Type Name:", response.data.name);
         } catch (error) {
@@ -153,38 +142,25 @@ const RealEstate = () => {
         }
     };
 
-    // const fetchAssignedToName = async (assignedToId) => {
-    //     try {
-    //         const response = await axios.get(`http://localhost:8000/assigned_to_name/${assignedToId}/`);
-    //         setAssignedToName((prev) => ({
-    //             ...prev,
-    //             [assignedToId]: response.data.name, // Store assigned to name in state
-    //         }));
-    //     } catch (error) {
-    //         console.error("Error fetching assigned to name:", error);
-    //     }
-    // };
 
-    // Fetch meetings for a specific lead
     const fetchMeetings = async (leadId) => {
         try {
             const response = await axios.get(`http://localhost:8000/meetings/${leadId}/`);
             setMeetings((prev) => ({
                 ...prev,
-                [leadId]: response.data, // Store meetings in state
+                [leadId]: response.data,
             }));
         } catch (error) {
             console.error("Error fetching meetings:", error);
         }
     };
 
-    // Fetch calls for a specific lead
     const fetchCalls = async (leadId) => {
         try {
             const response = await axios.get(`http://localhost:8000/calls/${leadId}/`);
             setCalls((prev) => ({
                 ...prev,
-                [leadId]: response.data, // Store calls in state
+                [leadId]: response.data,
             }));
         } catch (error) {
             console.error("Error fetching calls:", error);
@@ -231,15 +207,13 @@ const RealEstate = () => {
         fetchLeadStageName(leadStageId);
         fetchLeadStatusName(leadStatusId);
         fetchLeadTypeName(leadTypeId);
-        //fetchAssignedToName(assignedToId);
 
-        // Check if meetings and calls are already fetched
         if (expandedLeadId === id) {
-            setExpandedLeadId(null); // Collapse if already expanded
+            setExpandedLeadId(null);
         } else {
-            await fetchMeetings(id); // Fetch meetings for the selected lead
-            await fetchCalls(id); // Fetch calls for the selected lead
-            setExpandedLeadId(id); // Expand the clicked lead
+            await fetchMeetings(id);
+            await fetchCalls(id);
+            setExpandedLeadId(id);
         }
     };
 
@@ -261,13 +235,12 @@ const RealEstate = () => {
                 </div>
                 <div className="d-flex justify-content-end flex-grow-1">
                     <div className="d-flex align-items-center">
-                        {/* Conditional rendering for the Delete button */}
                         {!loading && deletePermissions ? (
                             <button className="btn btn-danger btn-sm me-2" onClick={() => handleDeleteLead()}>
                                 Delete Lead
                             </button>
                         ) : (
-                            <span className="me-2"></span> // Placeholder if no delete permission
+                            <span className="me-2"></span>
                         )}
 
                         {!loading && editPermissions ? (
@@ -275,7 +248,7 @@ const RealEstate = () => {
                                 Edit Lead
                             </button>
                         ) : (
-                            <span className="me-2"></span> // Placeholder if no delete permission
+                            <span className="me-2"></span>
                         )}
                     </div>
                 </div>
@@ -321,15 +294,20 @@ const RealEstate = () => {
                                                         const meetingStatus = meetingStatuses.find(status => status.id === meeting.meeting_status);
                                                         const statusName = meetingStatus ? meetingStatus.meeting_status : 'Unknown Status';
 
-                                                        // Correctly use template literals with backticks
                                                         const meetingKey = `${lead.lead_id}-meeting-${meeting.meeting_id || index}-${meeting.company_domain}-${meeting.meeting_date}`;
 
                                                         return (
                                                             <li key={meetingKey}>
-                                                                <strong>Company Domain:</strong> {meeting.company_domain} <br />
                                                                 <strong>Status:</strong> {statusName} <br />
-                                                                <strong>Meeting Date:</strong> {new Date(meeting.meeting_date).toLocaleString()} <br />
-                                                            </li>
+                                                                <strong>Call Date:</strong> {new Date(meeting.meeting_date).toLocaleString('en-US', {
+                                                                    year: 'numeric',
+                                                                    month: 'long',
+                                                                    day: 'numeric',
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit',
+                                                                    second: '2-digit',
+                                                                    hour12: false  // Set to false for 24-hour format
+                                                                })} <br /><br />                                                            </li>
                                                         );
                                                     })}
                                                 </ul>
@@ -345,14 +323,20 @@ const RealEstate = () => {
                                                         const callStatus = callStatuses.find(status => status.id === call.call_status);
                                                         const statusName = callStatus ? callStatus.call_status : 'Unknown Status';
 
-                                                        // Correctly use template literals with backticks
                                                         const callKey = `${lead.lead_id}-call-${call.call_id || index}-${call.company_domain}-${call.call_date}`;
 
                                                         return (
                                                             <li key={callKey}>
-                                                                <strong>Company Domain:</strong> {call.company_domain} <br />
                                                                 <strong>Status:</strong> {statusName} <br />
-                                                                <strong>Call Date:</strong> {new Date(call.call_date).toLocaleString()} <br />
+                                                                <strong>Call Date:</strong> {new Date(call.call_date).toLocaleString('en-US', {
+                                                                    year: 'numeric',
+                                                                    month: 'long',
+                                                                    day: 'numeric',
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit',
+                                                                    second: '2-digit',
+                                                                    hour12: false  // Set to false for 24-hour format
+                                                                })} <br /><br />
                                                             </li>
                                                         );
                                                     })}

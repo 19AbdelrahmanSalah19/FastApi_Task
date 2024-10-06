@@ -3,8 +3,23 @@ from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
 from sqlalchemy.orm import relationship
 from database import Base
 import datetime
+from sqlalchemy.sql import func
+from sqlalchemy.types import TypeDecorator, Numeric
+from decimal import Decimal
 
-# UserInfo model (representing user_info table)
+class Money(TypeDecorator):
+    impl = Numeric(precision=19, scale=4)  # Adjust precision and scale as needed
+
+    def process_bind_param(self, value, dialect):
+        if value is not None:
+            return Decimal(value)
+        return value
+
+    def process_result_value(self, value, dialect):
+        if value is not None:
+            return Decimal(value)
+        return value
+
 class UserInfo(Base):
     __tablename__ = "user_info"
 
@@ -21,11 +36,9 @@ class UserInfo(Base):
     password_hash = Column(String(200))
     gender = Column(String(10), CheckConstraint("gender IN ('Male', 'Female')"))
 
-    # Relationships
     roles = relationship("UserRoleMapping", back_populates="user")
     leads = relationship("Lead", back_populates="assigned_to_user")
 
-# UserRoles model (representing user_roles table)
 class UserRoles(Base):
     __tablename__ = "user_roles"
 
@@ -38,19 +51,16 @@ class UserRoles(Base):
         UniqueConstraint('company_domain', 'module_id', 'name'),
     )
 
-    # Relationships
     user_role_mapping = relationship("UserRoleMapping", back_populates="role")
     module = relationship("Modules", back_populates="user_roles")  # Add this line to link to Modules
 
 
-# UserRoleMapping model (representing user_role_mapping table)
 class UserRoleMapping(Base):
     __tablename__ = "user_role_mapping"
 
     user_id = Column(Integer, ForeignKey("user_info.id"), primary_key=True)
     role_id = Column(Integer, ForeignKey("user_roles.id"), primary_key=True)
 
-    # Relationships
     user = relationship("UserInfo", back_populates="roles")
     role = relationship("UserRoles")
 
@@ -71,7 +81,6 @@ class Lead(Base):
     lead_status = Column(Integer, nullable=False)
     lead_type = Column(Integer, nullable=False)
 
-    # Define composite foreign keys
     __table_args__ = (
         ForeignKeyConstraint(
             ['company_domain', 'lead_stage'],
@@ -87,15 +96,13 @@ class Lead(Base):
         ),
     )
 
-    # Relationships
     assigned_to_user = relationship("UserInfo", back_populates="leads")
-    stage = relationship("LeadStage", back_populates="leads")
-    status = relationship("LeadStatus", back_populates="leads")
-    type = relationship("LeadType", back_populates="leads")
+    stage = relationship("LeadStage", back_populates="leads", overlaps="leads,status")
+    status = relationship("LeadStatus", back_populates="leads", overlaps="leads,stage")
+    type = relationship("LeadType", back_populates="leads", overlaps="stage,status,leads")
     meetings = relationship('ClientMeeting', back_populates='lead', cascade='all, delete-orphan')
     calls = relationship('ClientCall', back_populates='lead', cascade='all, delete-orphan')
 
-# LeadStage Model
 class LeadStage(Base):
     __tablename__ = "leads_stage"
 
@@ -107,7 +114,7 @@ class LeadStage(Base):
     is_not_assigned = Column(Boolean, default=False)
     is_action_taken = Column(Boolean, default=False)
 
-    leads = relationship("Lead", back_populates="stage")
+    leads = relationship("Lead", back_populates="stage", overlaps="leads")
 
 class CompanyInfo(Base):
     __tablename__ = "company_info"
@@ -131,7 +138,6 @@ class ClientMeeting(Base):
     meeting_date = Column(DateTime)
     meeting_status= Column(Integer, ForeignKey("meetings_status.id"))  # Update to match the foreign key
 
-    # Relationships
     lead = relationship("Lead", back_populates="meetings")
     assigned_user = relationship("UserInfo")
     meeting_status_ref = relationship("MeetingStatus", back_populates="meetings")  
@@ -157,14 +163,12 @@ class ClientCall(Base):
     company_domain = Column(String(100), ForeignKey("company_info.company_domain"))
     lead_id = Column(Integer, ForeignKey("leads_info.lead_id"))
     call_date = Column(DateTime)
-    call_status = Column(Integer, ForeignKey("calls_status.id"))  # Change to reflect the foreign key correctly
+    call_status = Column(Integer, ForeignKey("calls_status.id")) 
 
-    # Relationships
     lead = relationship("Lead", back_populates="calls")
     assigned_user = relationship("UserInfo")
     call_status_ref = relationship("CallStatus", back_populates="calls")     
 
-# CallStatus Model
 class CallStatus(Base):
     __tablename__ = "calls_status"
 
@@ -175,7 +179,6 @@ class CallStatus(Base):
 
     calls = relationship("ClientCall", back_populates="call_status_ref") 
 
-# LeadStatus Model
 class LeadStatus(Base):
     __tablename__ = "leads_status"
 
@@ -184,9 +187,8 @@ class LeadStatus(Base):
     lead_status = Column(String(50), nullable=False)
     date_added = Column(DateTime, default=datetime.datetime.now)
 
-    leads = relationship("Lead", back_populates="status")
+    leads = relationship("Lead", back_populates="status", overlaps="leads")
 
-# LeadType Model
 class LeadType(Base):
     __tablename__ = "leads_types"
 
@@ -195,7 +197,8 @@ class LeadType(Base):
     lead_type = Column(String(50), nullable=False)
     date_added = Column(DateTime, default=datetime.datetime.now)
 
-    leads = relationship("Lead", back_populates="type")
+    leads = relationship("Lead", back_populates="type", overlaps="leads")
+
 
 
 class UserRolePermissions(Base):
@@ -206,15 +209,13 @@ class UserRolePermissions(Base):
     module_id = Column(Integer, nullable=False)
     feature_id = Column(Integer, nullable=False)
 
-    # Permission flags
     d_read = Column(Boolean, default=False)
     d_write = Column(Boolean, default=False)
     d_edit = Column(Boolean, default=False)
     d_delete = Column(Boolean, default=False)
 
-    # Relationships
-    role = relationship("UserRoles", backref="permissions")  # Link to UserRoles
-    module_feature = relationship("ModuleFeatures", backref="permissions")  # Link to ModuleFeatures
+    role = relationship("UserRoles", backref="permissions") 
+    module_feature = relationship("ModuleFeatures", backref="permissions")  
 
     __table_args__ = (
     ForeignKeyConstraint(
@@ -234,17 +235,16 @@ class Modules(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(50), nullable=False)
     display_name = Column(String(100))
-    description = Column(String)  # TEXT type in SQL
+    description = Column(String) 
     available = Column(Boolean)
-    comming_on = Column(DateTime)  # DATE type in SQL
-    color = Column(Integer)  # BIGINT type in SQL
-    url = Column(String)  # TEXT type in SQL
+    comming_on = Column(DateTime) 
+    color = Column(Integer)  
+    url = Column(String)  
 
-    # Relationships
-    user_roles = relationship("UserRoles", back_populates="module")  # Define back_populates for user roles if needed
-    features = relationship("ModuleFeatures", back_populates="module_reference")  # Change this line
+    user_roles = relationship("UserRoles", back_populates="module") 
+    features = relationship("ModuleFeatures", back_populates="module_reference")  
 
-# ModuleFeatures model (representing module_features table)
+
 class ModuleFeatures(Base):
     __tablename__ = "module_features"
 
@@ -253,10 +253,51 @@ class ModuleFeatures(Base):
     name = Column(String(50), nullable=False)
     display_name = Column(String(100), nullable=False)
 
-    # Relationships
-    module_reference = relationship("Modules", back_populates="features")  # Change to avoid conflict
-
+    module_reference = relationship("Modules", back_populates="features")  
     __table_args__ = (
         UniqueConstraint('module_id', 'feature_id', 'name', name='UQ_module_features'),
     )
 
+class EmployeeInfo(Base):
+    __tablename__ = "employees_info"
+
+    date_added = Column(DateTime, default=datetime.datetime.now)
+    company_domain = Column(String(100), ForeignKey("company_info.company_domain"), primary_key=True)
+    employee_id = Column(Integer, primary_key=True, autoincrement=True)
+    contact_name = Column(String(50), nullable=False)
+    business_phone = Column(String(50))
+    personal_phone = Column(String(50))
+    business_email = Column(String(50))
+    personal_email = Column(String(50))
+    gender = Column(String(10))
+    is_company_admin = Column(Boolean)
+    user_uid = Column(String, default=func.newid())  
+    salaries = relationship(
+        "EmployeeSalary", 
+        back_populates="employee",
+        cascade="all, delete-orphan"  
+    )
+
+class EmployeeSalary(Base):
+    __tablename__ = "employees_salaries"
+
+    company_domain = Column(String(100), primary_key=True)
+    employee_id = Column(Integer, primary_key=True)
+    gross_salary = Column(Money)
+    insurance = Column(Money)
+    taxes = Column(Money)
+    net_salary = Column(Money)
+    due_year = Column(Integer, primary_key=True)
+    due_month = Column(Integer, primary_key=True)
+    date_added = Column(DateTime, default=datetime.datetime.now)
+    due_date = Column(DateTime)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ['company_domain', 'employee_id'],
+            ['employees_info.company_domain', 'employees_info.employee_id'],
+            ondelete='CASCADE',
+        ),
+    )
+
+    employee = relationship("EmployeeInfo", back_populates="salaries") 

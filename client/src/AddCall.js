@@ -8,21 +8,18 @@ const AddCall = () => {
     const [callStatuses, setCallStatuses] = useState([]);
     const [filteredCallStatuses, setFilteredCallStatuses] = useState([]);
     const [companyDomain, setCompanyDomain] = useState([]);
-    const [leadNames, setLeadNames] = useState([]);
-    const [leads, setLeads] = useState([]); // State for leads
+    const [leads, setLeads] = useState([]); 
     const location = useLocation();
-    const userId = location.state?.userId;
     const moduleId = location.state?.moduleId;
     const [call, setCall] = useState({
         company_domain: '',
         call_date: '',
-        lead_id: '',  // This will hold the selected lead's ID
+        lead_id: '', 
         assigned_to: '',
         call_status: '',
     });
 
     useEffect(() => {
-        // Fetch available users and call statuses
         const fetchData = async () => {
             try {
                 const usersResponse = await axios.get(`http://localhost:8000/users/${moduleId}/`);
@@ -39,7 +36,7 @@ const AddCall = () => {
         };
 
         fetchData();
-    }, []);
+    }, [moduleId]);
 
     const handleInputChange = (event) => {
         const { name, value } = event.target;
@@ -53,14 +50,12 @@ const AddCall = () => {
             company_domain: selectedDomain,
         }));
 
-        // Filter statuses based on selected domain
         const filteredStatuses = callStatuses.filter(status => status.company_domain === selectedDomain);
         setFilteredCallStatuses(filteredStatuses);
 
-        // Optionally reset call status if domain changes
         setCall(prevCall => ({
             ...prevCall,
-            call_status: '' // reset the status selection
+            call_status: '' 
         }));
     };
 
@@ -68,15 +63,15 @@ const AddCall = () => {
         const selectedUserId = event.target.value;
         setCall((prevCall) => ({
             ...prevCall,
-            assigned_to: selectedUserId, // Set the selected user ID
+            assigned_to: selectedUserId,
         }));
 
         try {
             const leadsResponse = await axios.get(`http://localhost:8000/leads/${selectedUserId}`);
-            setLeads(leadsResponse.data); // Update leads based on the selected user
+            setLeads(leadsResponse.data); 
             setCall((prevCall) => ({
                 ...prevCall,
-                lead_id: '', // Reset lead ID when user changes
+                lead_id: '', 
             }));
         } catch (error) {
             console.error("There was an error fetching the leads!", error);
@@ -85,14 +80,17 @@ const AddCall = () => {
 
     const handleSubmit = (event) => {
         event.preventDefault();
-        const isoDate = new Date(call.call_date).toISOString();
+
+        const utcDate = new Date(call.call_date + 'Z');
+        const isoDate = utcDate.toISOString();
 
         const payload = {
             ...call,
-            call_date: isoDate, // Set call_date to ISO format
+            call_date: isoDate, 
         };
         axios.post('http://localhost:8000/calls/', payload)
             .then(response => {
+                console.log("ADDED DATE: ", payload.call_date)
                 alert("Call added successfully!");
             })
             .catch(error => {
@@ -143,7 +141,7 @@ const AddCall = () => {
                         id="assigned_to"
                         className="form-control"
                         value={call.assigned_to}
-                        onChange={handleUserChange} // Change to handleUserChange
+                        onChange={handleUserChange} 
                         required
                     >
                         <option value="">Assign to</option>
@@ -155,7 +153,6 @@ const AddCall = () => {
                     </select>
                 </div>
 
-                {/* New dropdown for selecting a lead */}
                 <div className="form-group">
                     <label htmlFor="lead_id">Lead Name</label>
                     <select

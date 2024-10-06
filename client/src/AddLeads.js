@@ -11,7 +11,6 @@ const AddLeads = () => {
     const [leadTypes, setLeadTypes] = useState([]);
     const [companyDomain, setCompanyDomain] = useState([]);
     const location = useLocation();
-    const userId = location.state?.userId;
     const moduleId = location.state?.moduleId;
     const [lead, setLead] = useState({
         company_domain: '',
@@ -27,7 +26,6 @@ const AddLeads = () => {
     });
 
     useEffect(() => {
-        // Fetch available users, lead stages, statuses, types, and company domains
         const fetchData = async () => {
             try {
                 const usersResponse = await axios.get(`http://localhost:8000/users/${moduleId}/`);
@@ -50,7 +48,7 @@ const AddLeads = () => {
         };
 
         fetchData();
-    }, []);
+    }, [moduleId]);
 
     const handleInputChange = (event) => {
         const { name, value } = event.target;
@@ -174,7 +172,6 @@ const AddLeads = () => {
                         <option value="">Select Gender</option>
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
-                        <option value="Other">Other</option>
                     </select>
                 </div>
 

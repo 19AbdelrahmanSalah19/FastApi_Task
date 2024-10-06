@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation} from 'react-router-dom';
 
 const EditSpecificLead = () => {
     const location = useLocation();
-    const navigate = useNavigate();
-    const { userId, moduleId, leadId } = location.state;
+    const moduleId = location.state?.moduleId;
+    const leadId = location.state?.leadId;
 
     const [lead, setLead] = useState({
         company_domain: '',
@@ -28,14 +28,11 @@ const EditSpecificLead = () => {
     const [companyDomain, setCompanyDomain] = useState([]);
 
     useEffect(() => {
-        // Fetch lead details and other required data
         const fetchData = async () => {
             try {
-                // Fetch lead details
                 const leadResponse = await axios.get(`http://localhost:8000/lead/${leadId}/`);
                 setLead(leadResponse.data);
 
-                // Fetch available users, lead stages, statuses, types, and company domains
                 const usersResponse = await axios.get(`http://localhost:8000/users/${moduleId}/`);
                 setUsers(usersResponse.data);
 

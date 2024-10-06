@@ -9,8 +9,6 @@ const AddMeeting = () => {
     const [filteredMeetingStatuses, setFilteredMeetingStatuses] = useState([]);
     const [companyDomain, setCompanyDomain] = useState([]);
     const location = useLocation();
-    const userId = location.state?.userId;
-    const leadId = location.state?.leadId;
     const moduleId = location.state?.moduleId;
     const [leads, setLeads] = useState([]); // State for leads
     const [meeting, setMeeting] = useState({
@@ -38,7 +36,7 @@ const AddMeeting = () => {
         };
 
         fetchData();
-    }, []);
+    }, [moduleId]);
 
     const handleInputChange = (event) => {
         const { name, value } = event.target;
@@ -84,12 +82,13 @@ const AddMeeting = () => {
 
     const handleSubmit = (event) => {
         event.preventDefault();
-        //console.log("Submitting meeting:", meeting);
-        const isoDate = new Date(meeting.meeting_date).toISOString();
+
+        const utcDate = new Date(meeting.meeting_date + 'Z');
+        const isoDate = utcDate.toISOString();
 
         const payload = {
             ...meeting,
-            meeting_date: isoDate, // Set meeting_date to ISO format
+            meeting_date: isoDate, 
         };
         axios.post('http://localhost:8000/meetings/', payload)
             .then(response => {

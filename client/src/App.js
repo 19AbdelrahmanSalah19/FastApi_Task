@@ -41,31 +41,26 @@ function App() {
         setMessage(data.message);
         setUserId(data.user_id);
 
-        const moduleIds = data.module_id; // Assuming module_id is an array now
+        const moduleIds = data.module_id;
 
-        // Check for unique module IDs
         const uniqueModuleIds = [...new Set(moduleIds)];
 
         if (uniqueModuleIds.length === 1) {
-          // Redirect to single module with userId and moduleId
           const moduleName = modules.find(module => module.id === uniqueModuleIds[0])?.name;
-          //console.log("Navigating to:", moduleName);
           navigate(moduleName === "REAL_ESTATE" ? "/RealEstate" : "/HR", {
             state: { userId: data.user_id, moduleId: uniqueModuleIds[0] }
           });
         } else if (uniqueModuleIds.length > 1) {
-          // If there are multiple unique module IDs
           const options = uniqueModuleIds.map(id => {
             const module = modules.find(mod => mod.id === id);
             return {
               id,
-              name: module ? module.name : `Module ${id}` // Fallback if module not found
+              name: module ? module.name : `Module ${id}` 
             };
           });
 
-          // Ensure options only contain modules that were found
           const validOptions = options.filter(option => option.name !== `Module ${option.id}`);
-          setOptions(validOptions.length > 0 ? validOptions : null); // Set options only if valid
+          setOptions(validOptions.length > 0 ? validOptions : null); 
         }
       } else {
         setMessage("Login failed. Check your credentials.");
@@ -80,8 +75,7 @@ function App() {
     const selectedModule = modules.find(module => module.id === selectedModuleId);
     const moduleName = selectedModule?.name;
 
-    // Redirect based on the selected module with userId and moduleId
-    //console.log("Navigating to:", moduleName);
+   
     navigate(moduleName === "REAL_ESTATE" ? "/RealEstate" : "/HR", {
       state: {
         userId,
